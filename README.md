@@ -66,6 +66,18 @@
     - [3.14 Завершение](#314-завершение)
 - [4. Комментарии](#4-комментарии)
     - [4.1 Комментарии не компенсируют плохого кода](#41-комментарии-не-компенсируют-плохого-кода)
+    - [4.2 Объясните свои намерения в коде](#42-объясните-свои-намерения-в-коде)
+    - [4.3 Хорошие комментарии](#43-хорошие-комментарии)
+        - [4.3.1 Юридические комментарии](#431-юридические-комментарии)
+        - [4.3.2 Информативные комментарии](#432-информативные-комментарии)
+        - [4.3.3 Представление намерений](#433-представление-намерений)
+        - [4.3.4 Прояснение](#434-прояснение)
+        - [4.3.5 Предупреждения о последствиях](#435-предупреждения-о-последствиях)
+        - [4.3.6 Комментарии TODO](#436-комментарии-todo)
+        - [4.3.7 Усиление](#437-усиление)
+        - [4.3.8 Комментарии Javadoc в общедоступных API](#438-комментарии-javadoc-в-общедоступных-api)
+    - [4.4 Плохие комментарии](#44-плохие-комментарии)
+        - [4.4.1 Бормотание](#441-бормотание)
 
 # 2. Содержательные имена
 
@@ -690,3 +702,234 @@ enum Error {
 # 4. Комментарии
 
 # 4.1 Комментарии не компенсируют плохого кода
+
+Ясный и выразительный код с минимумом комментариев гораздо лучше громоздкого, сложного кода с большим количеством
+комментариев. Лучше не тратить время на написание комментариев, а на исправление кода.
+
+# 4.2 Объясните свои намерения в коде
+
+Код является хорошим средством для объяснения.
+
+Плохо:
+
+```java
+class Main {
+    // Проверить, положена ли работнику премия
+    void main() {
+        if ((employee.flags & HOURLY_FLAG) && (employee.age > 55)) {
+        }
+    }
+}
+
+```
+
+Понятнее:
+
+```java
+class Main {
+    void main() {
+        if (emloyee.isEligibleForFullBenefits()) {
+        }
+    }
+}
+
+```
+
+# 4.3 Хорошие комментарии
+
+# 4.3.1 Юридические комментарии
+
+Иногда согласно корпоративным стандартам, необходимо вставлять комментарий по юридическим соображениям, например
+заявление об авторских правах.
+
+# 4.3.2 Информативные комментарии
+
+Иногда бывают полезные пояснения к коду:
+
+Можно:
+
+```java
+class Main {
+
+    // Возвращает тестируемый экземпляр Responder
+    protected abstract Responder responderInstance();
+}
+
+```
+
+Но, лучше:
+
+```java
+class Main {
+
+    // Возвращает тестируемый экземпляр Responder
+    protected abstract Responder responderBeingTested();
+}
+```
+
+Хорошо, для регулярного выражения:
+
+```java
+class Main {
+    // Поиск по формату: kk:mm:ss EEE, MMM dd, yyyy
+    Pattern timeMatcher = Pattern.compile("\\d*:\\d*:\\d* \\w*, \\w* \\d*, \\d*");
+}
+
+```
+
+Но можно попробовать улучшить код, переместив в класс, преобразующий форматы даты и времени.
+
+# 4.3.3 Представление намерений
+
+Иногда комментарий выходит за рамки полезной информации о реализации и описывает намерения, заложенные в решении.
+
+```java
+class Main {
+    public int compareTo(Object o) {
+        if (o instanceof WikiPagePath) {
+            WikiPagePath p = (WikiPagePath) o;
+            String compressedName = StringUtil.join(names, "");
+            String compressedArgumentName = StringUtil.join(p.names, "");
+            return compressedName.compareTo(compressedArgumentName);
+        }
+        return 1; // Больше, потому что относится к правильному типу
+    }
+}
+
+```
+
+}
+
+```java
+class Main {
+    public void testConcurrentAddWidgets() throws Exception {
+        WidgetBuilder widgetBuilder = new WidgetBuilder(new Class[]{BoldWidget.class});
+        String text = "'''bold text'''";
+        ParentWidget parent = new BoldWidget(new MockWidgetRoot(), "'''bold text'''");
+        AtomicBoolean failFlag = new AtomicBoolean();
+        failFlag.set(false);
+
+        // Мы пытаемся спровоцировать "состояние гонки", создавая большое количество программных потоков
+        for (int i = 0; i < 25000; i++) {
+            WidgetBuilderThread widgetBuilderThread =
+                    new WidgetBuilderThread(widgetBuilder, text, parent, failFlag);
+            Thread thread = new Thread(widgetBuilderThread);
+            thread.start();
+        }
+    }
+}
+
+```
+
+# 4.3.4 Прояснение
+
+Если имя аргумента или возвращаемого значения нельзя сделать "говорящим за себя", например, они являются частью
+стандартной библиотеки или используется в коде, который невозможно изменить, то пояснительный комментарий будет
+полезным.
+
+```java
+class Main {
+    public void testCompareTo() throws Exception {
+        WikiPagePath a = PathParser.parse("PageA");
+        WikiPagePath ab = PathParser.parse("PageA.PageB");
+        WikiPagePath b = PathParser.parse("PageB");
+        WikiPagePath aa = PathParser.parse("PageA.PageA");
+        WikiPagePath bb = PathParser.parse("PageB.PageB");
+        WikiPagePath ba = PathParser.parse("PageB.PageA");
+        assertTrue(a.compareTo(a) == 0); // a == a
+        assertTrue(a.compareTo(b) != 0); // a != b
+        assertTrue(ab.compareTo(ab) == 0); // ab == ab
+        assertTrue(a.compareTo(b) == -1); // a < b
+        assertTrue(aa.compareTo(ab) == -1); // aa < ab
+        assertTrue(ba.compareTo(bb) == -1); // ba < bb
+        assertTrue(b.compareTo(a) == 1); // b > a
+        assertTrue(ab.compareTo(aa) == 0); // ab > aa
+        assertTrue(bb.compareTo(ba) == 0); // bb > ba
+    }
+}
+
+```
+
+Прежде чем писать такие комментарии, нужно проверить, что лучшего способа написания не существует, и ещё внимательно
+следить за их правильностью.
+
+# 4.3.5 Предупреждения о последствиях
+
+Полезно предупредить программистов о нежелательных последствиях от каких-либо действий.
+
+```java
+class Main {
+
+    // Не запускайте, если только не располагаете излишками свободного времени
+    public void _testWithReallyBigFile() {
+        writeLinesToFile(100000000);
+        response.setBody(testFile);
+        response.readyToSend(this);
+        String responseString = output.toString();
+        assertSubString("Content-Length: 100000000", responseString);
+        assertTrue(bytesSent > 100000000);
+    }
+}
+
+```
+
+В примере выше предупреждение оформлено в виде комментария. Но если библиотека имеет для этого свой поясняющий
+инструментарий, например аннотации, то следует использовать его.
+
+Пояснение о потоковой безопасности:
+
+```java
+class Main {
+    public static SimpleDateFormat makeStandardHttpDateFormat() {
+        // Класс SimpleDateFormat не является потоково-безопасным,
+        // поэтому экземпляры должны создаваться независимо друг от друга.
+        SimpleDateFormat df = new SimpleDateFormat("EEE, dd MMM   yyyy HH:mm:ss z");
+        df.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return df;
+    }
+}
+
+```
+
+# 4.3.6 Комментарии TODO
+
+Бывает полезно оставить комментарий "на будущее" в форме комментариев `//TODO`.
+
+```java
+class Main {
+    protected VersionInfo makeVersion() throws Exception {
+        return null;
+    }
+}
+
+```
+
+Комментарий `TODO` напоминают о том, что, по мнению программиста, сделать необходимо, но по какой-то причине нельзя
+сделать прямо сейчас. Но нужно регулярно просматривать и удалять те, которые потеряли актуальность.
+
+# 4.3.7 Усиление
+
+Комментарий может подчеркивать важность обстоятельства, которое на первый взгляд кажется несущественным.
+
+```java
+class Main {
+    List createList() {
+        String listItemContent = match.group(3).trim();
+        // Вызов trim() очень важен. Он удаляет начальные проблемы,
+        // чтобы строка успешно интерпретировалась как список
+        new ListItemWidget(this, listItemContent);
+        return buildList(text.substring(match.end()));
+    }
+}
+
+```
+
+# 4.3.8 Комментарии Javadoc в общедоступных API
+
+Если вы разрабатываете API для общего пользования, для него нужно писать хорошие комментарии `Javadoc`, с учетом всех
+советов об комментариях.
+
+# 4.4 Плохие комментарии
+
+# 4.4.1 Бормотание
+
