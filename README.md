@@ -121,6 +121,13 @@
         - [6.3.5 Активные записи](#635-активные-записи)
 - [7 Обработка ошибок](#7-обработка-ошибок)
     - [7.1 Используйте исключения вместо кодов ошибок](#71-используйте-исключения-вместо-кодов-ошибок)
+    - [7.2 Начните с написания команды try-catch-finally](#72-начните-с-написания-команды-try-catch-finally)
+    - [7.3 Используйте непроверяемые исключения](#73-используйте-непроверяемые-исключения)
+    - [7.4 Передавайте контекст с исключениями](#74-передавайте-контекст-с-исключениями)
+    - [7.5 Определяйте классы исключений в контексте потребностей вызывающей стороны](#75-определяйте-классы-исключений-в-контексте-потребностей-вызывающей-стороны)
+    - [7.6 Определите нормальный путь выполнения](#76-определите-нормальный-путь-выполнения)
+    - [7.7 Не возвращайте null](#77-не-возвращайте-null)
+    - [7.8 Не передавайте null](#78-не-передавайте-null)
 
 # 2 Содержательные имена
 
@@ -1490,9 +1497,6 @@ class Main {
 В этом случае нужно посмотреть, где используется внутренние данные используемого объекта(`ctxt`) во внешнем методе.
 
 ```java
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
-
 class Main {
     void method() {
         String outFile = outputDir + "/" + className.replace('.', '/') + ".class";
@@ -1526,4 +1530,258 @@ class Main {
 # 7 Обработка ошибок
 
 ## 7.1 Используйте исключения вместо кодов ошибок
+
+Раньше языки программирования не поддерживали механизм обработки исключения. Программа либо устанавливала флаг ошибки,
+либо возвращала код, который проверялся вызывающей стороной. Это сильно загромождает код.
+
+Флаг и возвращаемый код:
+
+```java
+class DeviceController {
+
+    void sendShutDown() {
+        DeviceHandle handle = getHandle(DEV1);
+        // Проверить состояние устройства
+        if (handle != DeviceHandle.INVALIDE) {
+            // Сохранить состояние устройства в поле записи
+            retrieveDeviceRecord(handle);
+            // Если устройство не приостановлено, отключить его
+            if (record.getStatus() != DEVICE_SUSPENDED) {
+                pauseDevice(handle);
+                clearDeviceWorkQueue(handle);
+                closeDevice(handle);
+            } else {
+                logger.log("Device suspended. Unable to shut down");
+            }
+        } else {
+            logger.log("Invalid handle for: " + DEV1.toString());
+        }
+    }
+}
+
+```
+
+С выдачей исключений и их обработка:
+
+```java
+class DeviceController {
+
+    void sendShutDown() {
+        try {
+            tryToShutDown();
+        } catch (DeviceShutDownError e) {
+            logger.log(e);
+        }
+    }
+
+    private tryToShutDown() throws DeviceShutDownError {
+        DeviceHandle handle = getHandle(DEV1);
+        DeviceRecord record = retrieveDeviceRecord(handle);
+
+        pauseDevice(handle);
+        clearDeviceWorkQueue(handle);
+        closeDevice(handle);
+    }
+
+    private DeviceHandle getHandle(DeviceID id) throws DeviceShutDownError {
+        // ...
+        throw new DeviceShutDownError("Invalid handle for: " + id.toString());
+        // ...
+    }
+}
+
+```
+
+Это упрощает код и два аспекта - алгоритм отключения устройства и обработка ошибок, теперь изолированы друг от друга.
+
+## 7.2 Начните с написания команды try-catch-finally
+
+Исключения определяют область видимости. Размещая код в блоке `try`, программист утверждает, что выполнение программы
+может прерваться в любом месте и продолжиться в блоке `catch`.
+
+Поскольку блок `catch` должен оставить программу в целостном состоянии, что бы и произошло в `try`. Рекомендуется
+начинать написание кода, который может инициировать исключение, начинать с `try-catch-finally`.
+
+Например, при методологии **TDD**, можно вначале написать тест, проверяющий инициализируемое исключение и реализовать
+это в разрабатываемом методе. Затем добавлять логику в метод, и писать тесты для реализуемой логики.
+
+```java
+class Main {
+    @Test(expected = StorageException.class)
+    public void retrieveSectionShouldThrowOnInvalidFileName() {
+        sectionStore.retrieveSection("invalid - file");
+    }
+
+    public List<RecordedGrip> retrieveSection(String sectionName) {
+        try {
+            FileInputStream stream = new FileInputStream(sectionName);
+            // Реализовать здесь логику
+            stream.close();
+        } catch (FileNotFoundException e) {
+            throw new StorageException("retrieval error", e);
+        }
+        return new ArrayList<>();
+    }
+}
+```
+
+## 7.3 Используйте непроверяемые исключения
+
+Проверяемые исключения не являются необходимым для создания надежных программ.
+Проверяемые исключения могут нарушить принцип открытости/закрытости. Если инициировать проверяемое исключение из метода
+своего кода, а `catch` находится тремя уровнями выше, то исключение должно быть объявлено в сигнатурах всех методов
+между инициацией и `catch`. Следовательно, изменения на низком уровне, приводят к изменениям сигнатур на более высоких
+уровнях. Это нарушает инкапсуляцию - все функции должны располагать подробной информацией об низкоуровневом исключении.
+
+## 7.4 Передавайте контекст с исключениями
+
+Каждое исключение, должно содержать сообщение с информацией о сбойной операции и типе сбоя, необходимая для определения
+источника и местонахождения ошибки. Только по трассировке стека невозможно узнать цель выполнения операции.
+
+## 7.5 Определяйте классы исключений в контексте потребностей вызывающей стороны
+
+Есть множество способов классификации ошибок: по источнику, по типу. Но при создании классов исключений в первую очередь
+следует подумать как они будут обрабатываться.
+
+Неудачная классификация исключений:
+
+```java
+class Main {
+    void method() {
+        ACMEPort port = new ACMEPort(12);
+
+        try {
+            port.open();
+        } catch (DeviceResponseExeption e) {
+            reportPortError(e);
+            logger.log("Device response exception", e);
+        } catch (ATM1212UnlockedException e) {
+            reportPortError(e);
+            logger.log("Unlock exception", e);
+        } catch (GMXError e) {
+            reportPortError(e);
+            logger.log("Device response exception", e);
+        } finally {
+            // ...
+        }
+    }
+}
+
+```
+
+* Конструкция содержит множество повторений,
+* В большинстве выполняется стандартные действия, не зависящие от реальной причины
+
+Поскольку выполняемая работа при обработке исключения остается примерно постоянной, можно использовать "обертку":
+
+```java
+class Main {
+    void method() {
+        LocalPort port = new LocalPort(12);
+
+        try {
+            port.open();
+        } catch (PortDeviceFailure e) {
+            reportPortError(e);
+            logger.log(e.getMessage(), e);
+        } finally {
+            // ...
+        }
+    }
+}
+
+class LocalPort {
+    private ACMEPort innerPort;
+
+    public LocalPort(int portNumber) {
+        innerPort = new ACMEPort(portNumber);
+    }
+
+    public void open() {
+        try {
+            innerPort.open();
+        } catch (DeviceResponseExeption e) {
+            throw new PortDeviceFailure(e);
+        } catch (ATM1212UnlockedException e) {
+            throw new PortDeviceFailure(e);
+        } catch (GMXError e) {
+            throw new PortDeviceFailure(e);
+        }
+    }
+}
+
+```
+
+`LocalPort` представляет обертку, которая перехватывает и преобразует исключения:
+
+* С созданием обертки для стороннего вызова исключения, сокращается зависимость в коде и можно переключиться на другую
+  библиотеку без серьезных проблем
+* Упрощает имитацию сторонних вызовов в ходе тестирования
+* Не ограничиваетесь архитектурными решениями внешнего API, можно определить тот API, который удобен(в примере был
+  определен один тип исключения)
+
+_Я бы добавил в реализацию обработки исключения в обертке сообщения об ошибке._
+
+Часто достаточно одного класса исключения. С помощью сообщения в исключении можно различить разные виды ошибок.
+Используйте разные классы исключений в том случае, если необходимо перехватить одни исключения, разрешая прохождение
+других типов.
+
+## 7.6 Определите нормальный путь выполнения
+
+В некоторых ситуациях невозможно изолировать обработку ошибок в другие классы/методы, когда ошибки влияют на
+бизнес-логику.
+
+```java
+class Main {
+    void method() {
+        try {
+            MealExpenses expenses = expenseReportDao.getMeals(employee.getId());
+            mTotal += expenses.getTotal();
+        } catch (MealExpensesNotFound e) {
+            mTotal += getMealPerDieam();
+        }
+    }
+}
+
+```
+
+В данном случае можно применить паттерн **Особый случай**(Special case). Класс `ExpenseReportDao`, при отсутсвии
+подходящего объекта должен возвращать объект `MealExpense` по-умолчанию.
+
+```java
+class PerDiemMealExpenses implements MealExpenses {
+    public int getTotal() {
+        // Вернуть стандартные ежедневные затраты на питание
+    }
+}
+
+```
+
+## 7.7 Не возвращайте null
+
+Проверка на `null` загромождает код. Если в определенных случаях метод должен вернуть `null`, можно рассмотреть варианты
+с возвратом исключения, объекта "особого случая", пустого листа или специальные объекты(`java.util.Optional`). Так для
+клиента вашего метода нет необходимости каждый раз проверять на `null`.
+
+## 7.8 Не передавайте null
+
+Возвращать `null` из методов плохо, но передавать `null` ещё хуже.
+Если из-за передачи в качестве аргументов значение `null` может возникнуть ошибка, следует запретить передачу, добавив
+обработку:
+
+```java
+class metricsCalculator {
+    public double xProjection(Point p1, Point p2) {
+        if (p1 = null || p2 == null) {
+            throw new IllegalArgumentException("Invalid argument fo MetricsCalculatro.xProjection");
+        }
+        return (p2.x - p1.x) * 1.5;
+    }
+}
+
+```
+
+# 8 Границы
+
+## 8.1 Использование стороннего кода
 
