@@ -64,14 +64,14 @@ class ArgsTest {
     assertEquals(true, args.getBoolean('x'));
   }
 
-//  @Test
-//  void simpleStringPresent() throws Exception {
-//    Args args = new Args("x*", new String[] {"-x", "param"});
-//    assertEquals(1, args.cardinality());
-//    assertTrue(args.has('x'));
-//    assertEquals("param", args.getString('x'));
-//  }
-//
+  @Test
+  void simpleStringPresent() throws Exception {
+    Args args = new Args("x*", new String[] {"-x", "param"});
+    assertEquals(1, args.cardinality());
+    assertTrue(args.has('x'));
+    assertEquals("param", args.getString('x'));
+  }
+
 //  @Test
 //  void missingStringArgument() throws Exception {
 //    try {
@@ -83,14 +83,14 @@ class ArgsTest {
 //    }
 //  }
 
-//  @Test
-//  void spacesInFormat() throws Exception {
-//    Args args = new Args("x, y", new String[] {"-xy"});
-//    assertEquals(2, args.cardinality());
-//    assertTrue(args.has('x'));
-//    assertTrue(args.has('y'));
-//  }
-//
+  @Test
+  void spacesInFormat() throws Exception {
+    Args args = new Args("x, y", new String[] {"-xy"});
+    assertEquals(2, args.cardinality());
+    assertTrue(args.has('x'));
+    assertTrue(args.has('y'));
+  }
+
 //  @Test
 //  void simpleIntPresent() throws Exception {
 //    Args args = new Args("x#", new String[] {"-x", "42"});
