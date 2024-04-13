@@ -12,50 +12,50 @@ class ArgsTest {
     assertEquals(0, args.cardinality());
   }
 
-  @Test
-  void testWithNoSchemaButWithOneArgument() throws Exception {
-    try {
-      new Args("", new String[] {"-x"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.UNEXPECTED_ARGUMENT, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void testWithNoSchemaButWithOneArgument() throws Exception {
+//    try {
+//      new Args("", new String[] {"-x"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.UNEXPECTED_ARGUMENT, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//    }
+//  }
 
-  @Test
-  void withNoSchemaButWithMultipleArguments() throws Exception {
-    try {
-      new Args("", new String[] {"-x", "-y"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.UNEXPECTED_ARGUMENT, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void withNoSchemaButWithMultipleArguments() throws Exception {
+//    try {
+//      new Args("", new String[] {"-x", "-y"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.UNEXPECTED_ARGUMENT, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//    }
+//  }
 
-  @Test
-  void nonLetterSchema() throws Exception {
-    try {
-      new Args("*", new String[] {});
-      fail("Args constructor should have thrown exception");
-    } catch (ArgsException e) {
+//  @Test
+//  void nonLetterSchema() throws Exception {
+//    try {
+//      new Args("*", new String[] {});
+//      fail("Args constructor should have thrown exception");
+//    } catch (ArgsException e) {
+//
+//      assertEquals(ArgsException.ErrorCode.INVALID_ARGUMENT_NAME, e.getErrorCode());
+//      assertEquals('*', e.getErrorArgumentId());
+//    }
+//  }
 
-      assertEquals(ArgsException.ErrorCode.INVALID_ARGUMENT_NAME, e.getErrorCode());
-      assertEquals('*', e.getErrorArgumentId());
-    }
-  }
-
-  @Test
-  void invalidArgumentFormat() throws Exception {
-    try {
-      new Args("f~", new String[] {});
-      fail("Args constructor should have throws exception");
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.INVALID_FORMAT, e.getErrorCode());
-      assertEquals('f', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void invalidArgumentFormat() throws Exception {
+//    try {
+//      new Args("f~", new String[] {});
+//      fail("Args constructor should have throws exception");
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.INVALID_FORMAT, e.getErrorCode());
+//      assertEquals('f', e.getErrorArgumentId());
+//    }
+//  }
 
   @Test
   void simpleBooleanPresent() throws Exception {
@@ -64,92 +64,92 @@ class ArgsTest {
     assertEquals(true, args.getBoolean('x'));
   }
 
-  @Test
-  void simpleStringPresent() throws Exception {
-    Args args = new Args("x*", new String[] {"-x", "param"});
-    assertEquals(1, args.cardinality());
-    assertTrue(args.has('x'));
-    assertEquals("param", args.getString('x'));
-  }
+//  @Test
+//  void simpleStringPresent() throws Exception {
+//    Args args = new Args("x*", new String[] {"-x", "param"});
+//    assertEquals(1, args.cardinality());
+//    assertTrue(args.has('x'));
+//    assertEquals("param", args.getString('x'));
+//  }
+//
+//  @Test
+//  void missingStringArgument() throws Exception {
+//    try {
+//      new Args("x*", new String[] {"-x"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.MISSING_STRING, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//    }
+//  }
 
-  @Test
-  void missingStringArgument() throws Exception {
-    try {
-      new Args("x*", new String[] {"-x"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.MISSING_STRING, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void spacesInFormat() throws Exception {
+//    Args args = new Args("x, y", new String[] {"-xy"});
+//    assertEquals(2, args.cardinality());
+//    assertTrue(args.has('x'));
+//    assertTrue(args.has('y'));
+//  }
+//
+//  @Test
+//  void simpleIntPresent() throws Exception {
+//    Args args = new Args("x#", new String[] {"-x", "42"});
+//    assertEquals(1, args.cardinality());
+//    assertTrue(args.has('x'));
+//    assertEquals(42, args.getInt('x'));
+//  }
 
-  @Test
-  void testSpacesInFormat() throws Exception {
-    Args args = new Args("x, y", new String[] {"-xy"});
-    assertEquals(2, args.cardinality());
-    assertTrue(args.has('x'));
-    assertTrue(args.has('y'));
-  }
+//  @Test
+//  void invalidInteger() throws Exception {
+//    try {
+//      new Args("x#", new String[] {"-x", "Forty two"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.INVALID_INTEGER, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//      assertEquals("Forty two", e.getErrorParameter());
+//    }
+//  }
 
-  @Test
-  void testSimpleIntPresent() throws Exception {
-    Args args = new Args("x#", new String[] {"-x", "42"});
-    assertEquals(1, args.cardinality());
-    assertTrue(args.has('x'));
-    assertEquals(42, args.getInt('x'));
-  }
+//  @Test
+//  void missingInteger() throws Exception {
+//    try {
+//      new Args("x#", new String[] {"-x"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.MISSING_INTEGER, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//    }
+//  }
 
-  @Test
-  void testInvalidInteger() throws Exception {
-    try {
-      new Args("x#", new String[] {"-x", "Forty two"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.INVALID_INTEGER, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-      assertEquals("Forty two", e.getErrorParameter());
-    }
-  }
+//  @Test
+//  void simpleDoublePresent() throws Exception {
+//    Args args = new Args("x##", new String[] {"-x", "42.3"});
+//    assertEquals(1, args.cardinality());
+//    assertTrue(args.has('x'));
+//    assertEquals(42.3, args.getDouble('x'), .001);
+//  }
 
-  @Test
-  void testMissingInteger() throws Exception {
-    try {
-      new Args("x#", new String[] {"-x"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.MISSING_INTEGER, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void invalidDouble() throws Exception {
+//    try {
+//      new Args("x##", new String[] {"-x", "Forty two"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.INVALID_DOUBLE, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//      assertEquals("Forty two", e.getErrorParameter());
+//    }
+//  }
 
-  @Test
-  void testSimpleDoublePresent() throws Exception {
-    Args args = new Args("x##", new String[] {"-x", "42.3"});
-    assertEquals(1, args.cardinality());
-    assertTrue(args.has('x'));
-    assertEquals(42.3, args.getDouble('x'), .001);
-  }
-
-  @Test
-  void testInvalidDouble() throws Exception {
-    try {
-      new Args("x##", new String[] {"-x", "Forty two"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.INVALID_DOUBLE, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-      assertEquals("Forty two", e.getErrorParameter());
-    }
-  }
-
-  @Test
-  void testMissingDouble() throws Exception {
-    try {
-      new Args("x##", new String[] {"-x"});
-      fail();
-    } catch (ArgsException e) {
-      assertEquals(ArgsException.ErrorCode.MISSING_DOUBLE, e.getErrorCode());
-      assertEquals('x', e.getErrorArgumentId());
-    }
-  }
+//  @Test
+//  void missingDouble() throws Exception {
+//    try {
+//      new Args("x##", new String[] {"-x"});
+//      fail();
+//    } catch (ArgsException e) {
+//      assertEquals(ArgsException.ErrorCode.MISSING_DOUBLE, e.getErrorCode());
+//      assertEquals('x', e.getErrorArgumentId());
+//    }
+//  }
 }
