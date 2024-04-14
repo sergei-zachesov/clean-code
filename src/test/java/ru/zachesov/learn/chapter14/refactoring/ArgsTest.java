@@ -91,13 +91,13 @@ class ArgsTest {
     assertTrue(args.has('y'));
   }
 
-//  @Test
-//  void simpleIntPresent() throws Exception {
-//    Args args = new Args("x#", new String[] {"-x", "42"});
-//    assertEquals(1, args.cardinality());
-//    assertTrue(args.has('x'));
-//    assertEquals(42, args.getInt('x'));
-//  }
+  @Test
+  void simpleIntPresent() throws Exception {
+    Args args = new Args("x#", new String[] {"-x", "42"});
+    assertEquals(1, args.cardinality());
+    assertTrue(args.has('x'));
+    assertEquals(42, args.getInt('x'));
+  }
 
 //  @Test
 //  void invalidInteger() throws Exception {
