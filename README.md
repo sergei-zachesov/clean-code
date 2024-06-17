@@ -284,6 +284,17 @@
 - [18 Многопоточность II](#18-многопоточность-ii)
     - [18.1 Пример приложения "клиент/сервер"](#181-пример-приложения-клиентсервер)
         - [18.1.1 Сервер](#1811-сервер)
+        - [18.1.2 Реализация серверного кода](#1812-реализация-серверного-кода)
+    - [18.2 Возможные пути выполнения](#182-возможные-пути-выполнения)
+    - [18.3 Знайте свои библиотеки](#183-знайте-свои-библиотеки)
+        - [18.3.1 Executor Framework](#1831-executor-framework)
+        - [18.3.2 Неблокирующие решения](#1832-неблокирующие-решения)
+        - [18.3.3 Потоково-небезопасные классы](#1833-потоково-небезопасные-классы)
+    - [18.4 Зависимости между методами могут нарушить работу многопоточного кода](#184-зависимости-между-методами-могут-нарушить-работу-многопоточного-кода)
+        - [18.4.1 Перенесение сбоев](#1841-перенесение-сбоев)
+        - [18.4.2 Клиентская блокировка](#1842-клиентская-блокировка)
+        - [18.4.3 Серверная блокировка](#1843-серверная-блокировка)
+    - [18.5 Повышение производительности](#185-повышение-производительности)
 
 # 2 Содержательные имена
 
@@ -4101,5 +4112,365 @@ class Example {
 Сервер - работает в режиме ожидания и прослушивает сокет на предмет клиентских подключений.
 Клиент - подключается и отправляет запросы.
 
-## 18.1.1 Сервер
+### 18.1.1 Сервер
+
+Сервер:
+
+```java
+class Server {
+    void method() {
+        ServerSocket serverSocket = new ServerSocket(8009);
+        while (keepProcessing) {
+            try {
+                Socket socket = serverSocket.accept();
+
+                process(socket);
+            } catch (Exception e) {
+
+                handle(e);
+            }
+        }
+    }
+}
+
+```
+
+Код подключения клиента:
+
+```java
+class Client {
+
+    private void connectSendReceive(int i) {
+        try {
+            Socket socket = new Socket("localhost", PORT);
+            MessageUtils.sendMessage(socket, Integer.toString(i));
+            MessageUtils.getMessage(socket);
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+Формальный тест производительности сервера:
+
+```java
+class ServerTest {
+
+    @Test(timeout = 10000)
+    public void shouldRunInUnder10Seconds() throws Exception {
+        Thread[] threads = createThreads();
+        startAllThreadsw(threads);
+        waitForAllThreadsToFinish(threads);
+    }
+}
+
+```
+
+Если тест завершился неудачей, можно решить проблему производительность с использованием многопоточности, но нужно знать
+в какой области расходуется основное время:
+
+* Ввод/вывод - использование сокета, подключение к БД, ожидание подгрузки из виртуальной памяти и т.д.
+* Процессор - числовые вычисления, обработка регулярных выражений, уборка мусора и т.д.
+
+В системах время используется в обеих областях, но для конкретной операции одна из областей является доминирующей.
+
+Если операция ориентирована на процессорное вычисление, то с помощью многопоточности производительность сильно не решить
+проблемы. Если операции ввод/вывод, то можно попробовать, например, пока одна часть системы ожидает ввода/вывода, другая
+часть использует время ожидания для выполнения других действий.
+
+### 18.1.2 Реализация серверного кода
+
+Для повышения производительности, если серверный метод `process` ориентирован на ввод/вывод:
+
+```java
+class Server {
+    void process(final Socket socket) {
+        if (socket == null) return;
+        Runnable clientHandler =
+                () -> {
+                    try {
+                        String message = MessageUtils.getMessage(socket);
+                        MessageUtils.sendMessage(socket, "Processed: " + message);
+                        closeIgnoringException(socket);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                };
+        Thread clientConnection = new Thread(clientHandler);
+        clientConnection.start();
+    }
+}
+
+```
+
+### 18.1.3 Анализ серверного кода
+
+У решения выше есть ряд проблем:
+
+* Нет ограничения количества на создание потоков. Система заглохнет, если слишком много пользователей будут её
+  использовать
+* Плохая чистота и структура кода
+
+Какая зона ответственности серверного кода:
+
+* Управление подключениями к сокетам
+* Обработка клиентских запросов
+* Политика многопоточности
+* Политика завершения работы сервера
+
+Функцию `process` следует разбить на более мелкие. Создание отдельных классов для каждой из ответственностей,
+перечисленных выше, упростит внесения изменений и упростит тестирование. _Подробную реализацию см. в книге._
+
+## 18.2 Возможные пути выполнения
+
+_Вкратце:_ Возможны множество путей выполнения кода с которым работают несколько потоков. Если при этом операции менее
+атомарны, то результат выполнения будет один и тот же. Если будет множество атомарных операций, то результаты могут быть
+разными. Ключевое слово `synchronized` сокращает как количество путей выполнения, так количество результатов.
+
+## 18.3 Знайте свои библиотеки
+
+### 18.3.1 Executor Framework
+
+Инфраструктура `Executor` создает пул потоков с автоматическим изменением размера и повторным созданием потоков при
+необходимости.
+
+### 18.3.2 Неблокирующие решения
+
+Код с блокированием потоков:
+
+```java
+public class ObjectWithValue {
+    private int value;
+
+    public synchronized void incrementValue() {
+        ++value;
+    }
+
+    public int getValue() {
+        return value;
+    }
+}
+
+```
+
+В Java 5 появились классы атомарной работы с примитивными типами: `AtomicBoolean`, `AtomicInteger` и `AtomicReference` и
+др. Данные классы не используют блокирование потоков, а операции типа **CAS**(Compare and Swap). Если проводит аналогию
+с БД, то `synchronized` - это **пессимистическая блокировка**, а не блокирующие классы работают как **оптимистическая
+блокировка**.
+
+Код с неблокирующими классом:
+
+```java
+public class ObjectWithValue {
+    private AtomicInteger value = new AtomicInteger(0);
+
+    public void incrementValue() {
+        value.incrementAndGet();
+    }
+
+    public int getValue() {
+        return value.get();
+    }
+}
+
+```
+
+### 18.3.3 Потоково-небезопасные классы
+
+Некоторые классы непотокобезопасные, например: `SimpleDateFormat`, подключение к БД, контейнеры `java.util`, сервлеты.
+
+Данный код непотокобезопасный:
+
+```java
+public class Example {
+    void method() {
+        if (!hashTable.containsKey(someKey)) {
+            hashTable.put(someKey, new SomeValue());
+        }
+    }
+}
+
+```
+
+Чтобы сделать его потокобезопасным, есть следующие решения:
+
+* Клиентская блокировка - установить блокировку HashTable и проследить чтобы клиенты тоже самое делали:
+
+```java
+public class Example {
+    void method() {
+        synchronized (map) {
+            if (!map.conainsKey(key)) map.put(key, value);
+        }
+    }
+}
+
+```
+
+* Серверная блокировка с паттерном `Адаптер` - инкапсулируйте `HashTable` в собственном объекте и использовать другой
+  API:
+
+```java
+public class WrappedHashtable<K, V> {
+    private Map<K, V> map = new Hashtable<K, V>();
+
+    public synchronized void putIfAbsent(K key, V value) {
+        if (map.containsKey(key)) map.put(key, value);
+    }
+}
+
+```
+
+* Используйте потоково-безопасные коллекции:
+
+```java
+public class Example {
+    void method() {
+        ConcurrentHashMap<Integer, String> map = new ConcurrentHashMap<Integer, String>();
+        map.putIfAbsent(key, value);
+    }
+}
+
+```
+
+## 18.4 Зависимости между методами могут нарушить работу многопоточного кода
+
+Пример зависимости между методами:
+
+```java
+public class IntegerIterator implements Iterator<Integer> {
+    private Integer nextValue = 0;
+
+    public synchronized boolean hasNext() {
+        return nextValue < 100000;
+    }
+
+    public synchronized Integer next() {
+        if (nextValue == 100000) throw new IteratorPastEndException();
+        return nextValue++;
+    }
+
+    public synchronized Integer getNextValue() {
+        return nextValue;
+    }
+}
+
+```
+
+Код клиента:
+
+```java
+public class Client {
+
+    void method() {
+        IntegerIterator iterator = new IntegerIterator();
+        while (iterator.hasNext()) {
+            int nextValue = iterator.next();
+            // do something with nextValue
+        }
+    }
+}
+
+```
+
+Если код выполняется разными потоками, есть вероятность, что в конце интеграции один из потоков выйдет за конечную
+позицию. Это происходит из-за использования двух методов одного объекта в одной конструкции, при этом оба метода с
+блокировкой(`synchronized`).
+
+Есть следующие способы решения данной проблемы.
+
+### 18.4.1 Перенесение сбоев
+
+Например, клиент может перехватить исключение и выполнить необходимые действия для восстановления. Но такое решение
+выглядит неуклюже.
+
+### 18.4.2 Клиентская блокировка
+
+Блокировка всех клиентов:
+
+```java
+public class Client {
+
+    IntegerIterator iterator = new IntegerIterator();
+
+    void method() {
+
+        while (true) {
+
+            int nextValue;
+            synchronized (iterator) {
+                if (!iterator.hasNext()) break;
+                nextValue = iterator.next();
+            }
+            doSometingWith(nextValue);
+        }
+    }
+}
+
+```
+
+Каждый клиент устанавливает блокировку при помощи ключевого слова `synchronized`. Данный способ необходим, если в коде
+используется инструменты сторонних разработчиков, не обладающими потоковой безопасностью.
+
+Данная стратегия рискованная: все программисты-клиенты, должны помнить об установлении блокировки перед использованием и
+её снятие после блокировки.
+
+### 18.4.3 Серверная блокировка
+
+Изменение кода со стороны сервера:
+
+```java
+public class IntegerIteratorServerLocked {
+    private Integer nextValue = 0;
+
+    public synchronized Integer getNextOrNull() {
+        if (nextValue < 100000) return nextValue++;
+        else return null;
+    }
+}
+
+```
+
+Изменения со стороны клиента:
+
+```java
+class Client {
+
+    public Integer method() {
+        while (true) {
+            Integer nextValue = iterator.getNextOrNull();
+            if (next == null) break;
+            // do something with nextValue
+        }
+    }
+}
+
+```
+
+Минусы данного подхода:
+
+* Сокращение дублирования кода со стороны клиента
+* Высокая производительность - в случае однопоточного развертывания, многопоточный сервер может использовать
+  непотокобезопассные классы
+* Снижает вероятность ошибок со стороны клиента
+* Определяет единую политику использования, которая сосредоточена на сервере
+
+Если серверный код неподконтролен, можно на стороне клиента паттерн Адаптер и добавить блокировку
+
+```java
+public class ThreadSafeIntegerIterator {
+    private IntegerIterator iterator = new IntegerIterator();
+
+    public synchronized Integer getNextOrNull() {
+        if (iterator.hasNext()) return iterator.next();
+        return null;
+    }
+}
+
+```
+
+### 18.5 Повышение производительности
 
